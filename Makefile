@@ -1,7 +1,7 @@
 .PHONY: all run build clean
 
-# CC=go
-CC=/go/bin/go
+CC=go
+# CC=/go/bin/go
 
 EXT = .go
 PJNAME = truth_table

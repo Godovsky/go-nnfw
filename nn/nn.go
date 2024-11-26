@@ -135,7 +135,7 @@ func (n *NeuralNetwork) Constructor(data_path string, c ...configuration) error 
 	}
 
 	if len(data_strs[0]) != int(n.config[0])+int(n.config[len(n.config)-1]) {
-		return errors.New("количество столбцов данных не соответствует количеству входов и выходов нейросети")
+		return errors.New("the number of data columns does not correspond to the number of inputs and outputs of the neural network")
 	}
 
 	n.trainData = make([][]float32, len(data_strs))
@@ -153,9 +153,9 @@ func (n *NeuralNetwork) Constructor(data_path string, c ...configuration) error 
 	if len(c) >= 2 {
 		for index, value := range c {
 			if value < 1 {
-				tmp_str := "параметр "
+				tmp_str := "the parameter "
 				tmp_str += strconv.Itoa(index + 1)
-				tmp_str += " меньше 1"
+				tmp_str += " is less than 1"
 
 				return errors.New(tmp_str)
 			}
@@ -178,7 +178,7 @@ func (n *NeuralNetwork) Constructor(data_path string, c ...configuration) error 
 		return nil
 	}
 
-	return errors.New("в конфигурации меньше двух элементов")
+	return errors.New("there are fewer than two elements in the configuration")
 }
 
 func (n *NeuralNetwork) Train() {

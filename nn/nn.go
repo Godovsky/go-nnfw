@@ -63,7 +63,7 @@ func (n *NeuralNetwork) Calculate() {
 				for wei := range n.layers[lay].neurons[neu].weights {
 					n.layers[lay].neurons[neu].value += n.layers[lay-1].neurons[wei].value * n.layers[lay].neurons[neu].weights[wei]
 				}
-				n.layers[lay].neurons[neu].value += n.layers[lay].bias
+				// n.layers[lay].neurons[neu].value += n.layers[lay].bias
 			}
 		}
 	}

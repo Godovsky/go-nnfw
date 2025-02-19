@@ -19,7 +19,7 @@ func main() {
 		}
 
 		n.Offset = 0.01
-		n.Step = 0.01
+		n.Step = 0.001
 	}
 
 	err = n.GetDataFromFile("data.csv")
@@ -36,7 +36,7 @@ func main() {
 	// }
 	// fmt.Println(n.TrainData)
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 200000; i++ {
 		n.Train()
 	}
 

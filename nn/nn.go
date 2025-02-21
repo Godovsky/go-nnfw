@@ -10,8 +10,6 @@ import (
 	"strconv"
 )
 
-type Configuration int8
-
 type neuron struct {
 	Weights []float32 `json:"Weights"`
 	Value   float32   `json:"Value"`
@@ -23,14 +21,14 @@ type layer struct {
 }
 
 type NeuralNetwork struct {
-	Config      []Configuration `json:"Config"`
-	Offset      float32         `json:"Offset"`
-	Step        float32         `json:"Step"`
-	NumOfImputs int8            `json:"Num_of_imputs"`
-	NumOfLayers int8            `json:"NumOfLayers"`
-	Inputs      []float32       `json:"Inputs"`
-	Layers      []layer         `json:"Layers"`
-	TrainData   [][]float32     `json:"-"`
+	Config      []uint8     `json:"Config"`
+	Offset      float32     `json:"Offset"`
+	Step        float32     `json:"Step"`
+	NumOfImputs int8        `json:"Num_of_imputs"`
+	NumOfLayers int8        `json:"NumOfLayers"`
+	Inputs      []float32   `json:"Inputs"`
+	Layers      []layer     `json:"Layers"`
+	TrainData   [][]float32 `json:"-"`
 }
 
 func activation(n float32) float32 {
@@ -38,12 +36,11 @@ func activation(n float32) float32 {
 }
 
 func (n *NeuralNetwork) Calculate() {
+	var tmp float32
 	for lay := range n.Layers {
-		var tmp float32
-		tmp = n.Layers[lay].Bias
 		if lay == 0 {
 			for neu := range n.Layers[lay].Neurons {
-				n.Layers[lay].Neurons[neu].Value = 0.0
+				tmp = n.Layers[lay].Bias
 				for in := range n.Inputs {
 					tmp += n.Inputs[in] * n.Layers[lay].Neurons[neu].Weights[in]
 				}
@@ -52,7 +49,6 @@ func (n *NeuralNetwork) Calculate() {
 		} else if lay < int(n.NumOfLayers)-1 {
 			for neu := range n.Layers[lay].Neurons {
 				tmp = n.Layers[lay].Bias
-				n.Layers[lay].Neurons[neu].Value = 0.0
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
 					tmp += n.Layers[lay-1].Neurons[wei].Value * n.Layers[lay].Neurons[neu].Weights[wei]
 				}
@@ -60,11 +56,11 @@ func (n *NeuralNetwork) Calculate() {
 			}
 		} else {
 			for neu := range n.Layers[lay].Neurons {
-				n.Layers[lay].Neurons[neu].Value = 0.0
+				tmp = float32(0.0) /* n.Layers[lay].Bias */
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
-					n.Layers[lay].Neurons[neu].Value += n.Layers[lay-1].Neurons[wei].Value * n.Layers[lay].Neurons[neu].Weights[wei]
+					tmp += n.Layers[lay-1].Neurons[wei].Value * n.Layers[lay].Neurons[neu].Weights[wei]
 				}
-				// n.Layers[lay].Neurons[neu].Value += n.Layers[lay].Bias
+				n.Layers[lay].Neurons[neu].Value = tmp
 			}
 		}
 	}
@@ -120,7 +116,7 @@ func (n *NeuralNetwork) Print() {
 	}
 }
 
-func (n *NeuralNetwork) GetDataFromFile(data_path string) error {
+func (n *NeuralNetwork) GetDataFromFile(data_path string, numOfHeadLines uint) error {
 	if n.Config == nil {
 		return errors.New("the neural network configuration is emty")
 	}
@@ -142,15 +138,19 @@ func (n *NeuralNetwork) GetDataFromFile(data_path string) error {
 		return errors.New("the number of data columns does not correspond to the number of inputs and outputs of the neural network")
 	}
 
-	n.TrainData = make([][]float32, len(data_strs))
+	n.TrainData = make([][]float32, len(data_strs)-int(numOfHeadLines))
 	for ind1 := range data_strs {
-		n.TrainData[ind1] = make([]float32, len(data_strs[ind1]))
+		if ind1 == 0 {
+			continue
+		}
+
+		n.TrainData[ind1-int(numOfHeadLines)] = make([]float32, len(data_strs[ind1]))
 		for ind2 := range data_strs[ind1] {
 			tmp, err := strconv.ParseFloat(data_strs[ind1][ind2], 32)
 			if err != nil {
 				return err
 			}
-			n.TrainData[ind1][ind2] = float32(tmp)
+			n.TrainData[ind1-int(numOfHeadLines)][ind2] = float32(tmp)
 		}
 	}
 	return err
@@ -174,11 +174,33 @@ func (n *NeuralNetwork) AddDataLine(data ...float32) error {
 	return nil
 }
 
-func (n *NeuralNetwork) Constructor(c ...Configuration) error {
-	n.Config = c
+/*
+An arguments:
 
-	if len(c) >= 2 {
-		for index, Value := range c {
+  - number of inputs;
+  - number of neurons (layer 1);
+  - ... ;
+  - number of neurons (layer N);
+  - number of outputs.
+
+An example with two inputs, two layers of 5 and 4 neurons each, and three outputs:
+
+	err := SetConfiguration(2, 5, 4, 3)
+	if err != nil {
+		log.Fatal(err)
+	}
+*/
+func (n *NeuralNetwork) Init(offset float32, step float32, config []uint8) error {
+	if offset == 0 || step == 0 {
+		return errors.New("offset and step can't be less than or equal to zero")
+	}
+	n.Offset = offset
+	n.Step = step
+
+	n.Config = config
+
+	if len(config) >= 2 {
+		for index, Value := range config {
 			if Value < 1 {
 				tmp_str := "the parameter "
 				tmp_str += strconv.Itoa(index + 1)
@@ -187,18 +209,19 @@ func (n *NeuralNetwork) Constructor(c ...Configuration) error {
 				return errors.New(tmp_str)
 			}
 		}
-		n.NumOfImputs = int8(c[0])
-		n.Inputs = make([]float32, c[0])
+		n.NumOfImputs = int8(config[0])
+		n.Inputs = make([]float32, config[0])
 
-		n.NumOfLayers = int8(len(c) - 1)
+		n.NumOfLayers = int8(len(config) - 1)
 		n.Layers = make([]layer, n.NumOfLayers)
 		for lay := range n.Layers {
-			n.Layers[lay].Neurons = make([]neuron, c[lay+1])
+			n.Layers[lay].Neurons = make([]neuron, config[lay+1])
 			for neu := range n.Layers[lay].Neurons {
-				n.Layers[lay].Neurons[neu].Weights = make([]float32, c[lay])
+				n.Layers[lay].Neurons[neu].Weights = make([]float32, config[lay])
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
-					n.Layers[lay].Neurons[neu].Weights[wei] = 0.5
+					n.Layers[lay].Neurons[neu].Weights[wei] = 0.0
 				}
+				n.Layers[lay].Bias = 0.0
 			}
 		}
 
@@ -208,22 +231,46 @@ func (n *NeuralNetwork) Constructor(c ...Configuration) error {
 	return errors.New("there are fewer than two elements in the Configuration")
 }
 
+func (n *NeuralNetwork) ResetOffsetAndStep(offset float32, step float32) error {
+	if offset <= 0 || step <= 0 {
+		return errors.New("offset and step can't be less than or equal to zero")
+	}
+	n.Offset = offset
+	n.Step = step
+
+	return nil
+}
+
 func (n *NeuralNetwork) Train() {
 	for out := range n.Layers[n.NumOfLayers-1].Neurons {
-		curCost := n.cost(int8(out))
+		var curCost float32
+		var newCost float32
+
+		curCost = n.cost(int8(out))
 
 		for lay := range n.Layers {
-			n.Layers[lay].Bias += n.Offset
-			newCost := n.cost(int8(out))
-			n.Layers[lay].Bias -= n.Offset
-			n.Layers[lay].Bias -= n.Step * ((newCost - curCost) / n.Offset)
+			if lay != int(n.NumOfLayers-1) {
+				origBias := n.Layers[lay].Bias
+				n.Layers[lay].Bias += n.Offset
+				newCost = n.cost(int8(out))
+				n.Layers[lay].Bias = origBias
+
+				dif := newCost - curCost
+				gradient := dif / n.Offset
+
+				n.Layers[lay].Bias -= n.Step * gradient
+			}
 
 			for neu := range n.Layers[lay].Neurons {
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
+					origWeight := n.Layers[lay].Neurons[neu].Weights[wei]
 					n.Layers[lay].Neurons[neu].Weights[wei] += n.Offset
 					newCost = n.cost(int8(out))
-					n.Layers[lay].Neurons[neu].Weights[wei] -= n.Offset
-					n.Layers[lay].Neurons[neu].Weights[wei] -= n.Step * ((newCost - curCost) / n.Offset)
+					n.Layers[lay].Neurons[neu].Weights[wei] = origWeight
+
+					dif := newCost - curCost
+					gradient := dif / n.Offset
+					n.Layers[lay].Neurons[neu].Weights[wei] -= n.Step * gradient
 				}
 			}
 		}

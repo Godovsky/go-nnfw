@@ -13,11 +13,11 @@ import (
 type neuron struct {
 	Weights []float32 `json:"Weights"`
 	Value   float32   `json:"Value"`
+	Bias    float32   `json:"Bias"`
 }
 
 type layer struct {
 	Neurons []neuron `json:"Neurons"`
-	Bias    float32  `json:"Bias"`
 }
 
 type NeuralNetwork struct {
@@ -40,7 +40,7 @@ func (n *NeuralNetwork) Calculate() {
 	for lay := range n.Layers {
 		if lay == 0 {
 			for neu := range n.Layers[lay].Neurons {
-				tmp = n.Layers[lay].Bias
+				tmp = n.Layers[lay].Neurons[neu].Bias
 				for in := range n.Inputs {
 					tmp += n.Inputs[in] * n.Layers[lay].Neurons[neu].Weights[in]
 				}
@@ -48,7 +48,7 @@ func (n *NeuralNetwork) Calculate() {
 			}
 		} else if lay < int(n.NumOfLayers)-1 {
 			for neu := range n.Layers[lay].Neurons {
-				tmp = n.Layers[lay].Bias
+				tmp = n.Layers[lay].Neurons[neu].Bias
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
 					tmp += n.Layers[lay-1].Neurons[wei].Value * n.Layers[lay].Neurons[neu].Weights[wei]
 				}
@@ -56,7 +56,7 @@ func (n *NeuralNetwork) Calculate() {
 			}
 		} else {
 			for neu := range n.Layers[lay].Neurons {
-				tmp = float32(0.0) /* n.Layers[lay].Bias */
+				tmp = /* 0.0 */ n.Layers[lay].Neurons[neu].Bias
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
 					tmp += n.Layers[lay-1].Neurons[wei].Value * n.Layers[lay].Neurons[neu].Weights[wei]
 				}
@@ -101,10 +101,10 @@ func (n *NeuralNetwork) Print() {
 	fmt.Println()
 
 	for inp := range n.Inputs {
-		fmt.Printf("|%10.3f|", n.Inputs[inp])
+		fmt.Printf("|%10.5f|", n.Inputs[inp])
 	}
 	for neu := range n.Layers[n.NumOfLayers-1].Neurons {
-		fmt.Printf("|%10.3f|", n.Layers[n.NumOfLayers-1].Neurons[neu].Value)
+		fmt.Printf("|%10.5f|", n.Layers[n.NumOfLayers-1].Neurons[neu].Value)
 	}
 	fmt.Println()
 
@@ -177,6 +177,8 @@ func (n *NeuralNetwork) AddDataLine(data ...float32) error {
 /*
 An arguments:
 
+  - offset
+  - learning step
   - number of inputs;
   - number of neurons (layer 1);
   - ... ;
@@ -221,7 +223,7 @@ func (n *NeuralNetwork) Init(offset float32, step float32, config []uint8) error
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
 					n.Layers[lay].Neurons[neu].Weights[wei] = 0.0
 				}
-				n.Layers[lay].Bias = 0.0
+				n.Layers[lay].Neurons[neu].Bias = 0.0
 			}
 		}
 
@@ -249,19 +251,19 @@ func (n *NeuralNetwork) Train() {
 		curCost = n.cost(int8(out))
 
 		for lay := range n.Layers {
-			if lay != int(n.NumOfLayers-1) {
-				origBias := n.Layers[lay].Bias
-				n.Layers[lay].Bias += n.Offset
+			for neu := range n.Layers[lay].Neurons {
+				// if lay != int(n.NumOfLayers-1) {
+				origBias := n.Layers[lay].Neurons[neu].Bias
+				n.Layers[lay].Neurons[neu].Bias += n.Offset
 				newCost = n.cost(int8(out))
-				n.Layers[lay].Bias = origBias
+				n.Layers[lay].Neurons[neu].Bias = origBias
 
 				dif := newCost - curCost
 				gradient := dif / n.Offset
 
-				n.Layers[lay].Bias -= n.Step * gradient
-			}
+				n.Layers[lay].Neurons[neu].Bias -= n.Step * gradient
+				// }
 
-			for neu := range n.Layers[lay].Neurons {
 				for wei := range n.Layers[lay].Neurons[neu].Weights {
 					origWeight := n.Layers[lay].Neurons[neu].Weights[wei]
 					n.Layers[lay].Neurons[neu].Weights[wei] += n.Offset

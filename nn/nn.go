@@ -66,7 +66,7 @@ func (n *NeuralNetwork) Calculate() {
 	}
 }
 
-func (n *NeuralNetwork) cost() float32 {
+func (n *NeuralNetwork) difference() float32 {
 	var res float32
 	var dif float32
 	for row := range n.TrainData {
@@ -194,11 +194,11 @@ An example with two inputs, two layers of 5 and 4 neurons each, and three output
 		log.Fatal(err)
 	}
 */
-func (n *NeuralNetwork) Init(Epsilon float32, step float32, config []uint8) error {
-	if Epsilon == 0 || step == 0 {
+func (n *NeuralNetwork) Init(epsilon float32, step float32, config []uint8) error {
+	if epsilon == 0 || step == 0 {
 		return errors.New("Epsilon and step can't be less than or equal to zero")
 	}
-	n.Epsilon = Epsilon
+	n.Epsilon = epsilon
 	n.Step = step
 
 	n.Config = config
@@ -246,20 +246,20 @@ func (n *NeuralNetwork) ResetEpsilonAndStep(epsilon float32, step float32) error
 }
 
 func (n *NeuralNetwork) Train() {
-	var curCost float32
-	var newCost float32
+	var curDiff float32
+	var newDiff float32
 
-	curCost = n.cost()
+	curDiff = n.difference()
 
 	for lay := range n.Layers {
 		for neu := range n.Layers[lay].Neurons {
 			if lay != int(n.NumOfLayers-1) {
 				origBias := n.Layers[lay].Neurons[neu].Bias
 				n.Layers[lay].Neurons[neu].Bias += n.Epsilon
-				newCost = n.cost()
+				newDiff = n.difference()
 				n.Layers[lay].Neurons[neu].Bias = origBias
 
-				dif := newCost - curCost
+				dif := newDiff - curDiff
 				gradient := dif / n.Epsilon
 
 				n.Layers[lay].Neurons[neu].Bias -= n.Step * gradient
@@ -268,10 +268,10 @@ func (n *NeuralNetwork) Train() {
 			for wei := range n.Layers[lay].Neurons[neu].Weights {
 				origWeight := n.Layers[lay].Neurons[neu].Weights[wei]
 				n.Layers[lay].Neurons[neu].Weights[wei] += n.Epsilon
-				newCost = n.cost()
+				newDiff = n.difference()
 				n.Layers[lay].Neurons[neu].Weights[wei] = origWeight
 
-				dif := newCost - curCost
+				dif := newDiff - curDiff
 				gradient := dif / n.Epsilon
 				n.Layers[lay].Neurons[neu].Weights[wei] -= n.Step * gradient
 			}

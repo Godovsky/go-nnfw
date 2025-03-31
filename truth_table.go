@@ -12,15 +12,15 @@ func main() {
 	if err != nil {
 		log.Println(err)
 
-		// config := []uint8{2, 6, 6}
-		// err = n.SetConfiguration(0.01, 0.001, config)
-		err = n.Init(0.01, 0.001, []uint8{2, 4, 6})
+		// config := []uint8{2, 3, 6}
+		// err = n.SetConfiguration(0.01, 0.01, config)
+		err = n.Init(0.01, 0.01, []uint8{2, 3, 6})
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}
 
-	// n.ResetOffsetAndStep(0.01, 0.001)
+	// n.ResetEpsilonAndStep(0.01, 0.001)
 
 	err = n.GetDataFromFile("data.csv", 1)
 	if err != nil {
@@ -35,13 +35,13 @@ func main() {
 	// }
 	// fmt.Println(n.TrainData)
 
-	for i := 0; i < 50; i++ {
-		for j := 0; j < 10000; j++ {
+	for range 50 {
+		for range 10000 {
 			n.Train()
 		}
 
-		for i := 0; i < 2; i++ {
-			for j := 0; j < 2; j++ {
+		for i := range 2 {
+			for j := range 2 {
 				n.Inputs[0] = float32(i)
 				n.Inputs[1] = float32(j)
 				n.Calculate()
